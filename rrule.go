@@ -235,9 +235,10 @@ func buildRRule(arg ROption) RRule {
 	}
 
 	// Reset the timeset value
-	r.timeset = []time.Time{}
+	r.timeset = nil
 
 	if r.freq < HOURLY {
+		r.timeset = make([]time.Time, 0, len(r.byhour)*len(r.byminute)*len(r.bysecond))
 		for _, hour := range r.byhour {
 			for _, minute := range r.byminute {
 				for _, second := range r.bysecond {
@@ -530,6 +531,7 @@ func (info *iterInfo) getdayset(freq Frequency, year int, month time.Month, day 
 func (info *iterInfo) gettimeset(freq Frequency, hour, minute, second int) (result []time.Time) {
 	switch freq {
 	case HOURLY:
+		result = make([]time.Time, 0, len(info.rrule.byminute)*len(info.rrule.bysecond))
 		for _, minute := range info.rrule.byminute {
 			for _, second := range info.rrule.bysecond {
 				result = append(result, time.Date(1, 1, 1, hour, minute, second, 0, info.rrule.dtstart.Location()))
@@ -537,6 +539,7 @@ func (info *iterInfo) gettimeset(freq Frequency, hour, minute, second int) (resu
 		}
 		sort.Sort(timeSlice(result))
 	case MINUTELY:
+		result = make([]time.Time, 0, len(info.rrule.bysecond))
 		for _, second := range info.rrule.bysecond {
 			result = append(result, time.Date(1, 1, 1, hour, minute, second, 0, info.rrule.dtstart.Location()))
 		}
@@ -627,7 +630,7 @@ func (iterator *rIterator) generate() {
 		}
 		// Output results
 		if len(r.bysetpos) != 0 && len(iterator.timeset) != 0 {
-			poslist := []time.Time{}
+			var poslist []time.Time
 			for _, pos := range r.bysetpos {
 				var daypos, timepos int
 				if pos < 0 {
@@ -635,7 +638,7 @@ func (iterator *rIterator) generate() {
 				} else {
 					daypos, timepos = divmod(pos-1, len(iterator.timeset))
 				}
-				temp := []int{}
+				var temp []int
 				for _, x := range dayset[start:end] {
 					if x != nil {
 						temp = append(temp, *x)
@@ -861,7 +864,7 @@ func (r *RRule) Iterator() Next {
 		if r.freq >= HOURLY && len(r.byhour) != 0 && !contains(r.byhour, iterator.hour) ||
 			r.freq >= MINUTELY && len(r.byminute) != 0 && !contains(r.byminute, iterator.minute) ||
 			r.freq >= SECONDLY && len(r.bysecond) != 0 && !contains(r.bysecond, iterator.second) {
-			iterator.timeset = []time.Time{}
+			iterator.timeset = nil
 		} else {
 			iterator.timeset = iterator.ii.gettimeset(r.freq, iterator.hour, iterator.minute, iterator.second)
 		}
