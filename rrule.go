@@ -676,9 +676,9 @@ func (iterator *rIterator) generate() {
 				if i < 0 {
 					continue
 				}
-				date := iterator.ii.firstyday.AddDate(0, 0, i)
+				dateYear, dateMonth, dateDay := iterator.ii.firstyday.AddDate(0, 0, i).Date()
 				for _, timeTemp := range iterator.timeset {
-					res := time.Date(date.Year(), date.Month(), date.Day(),
+					res := time.Date(dateYear, dateMonth, dateDay,
 						timeTemp.Hour(), timeTemp.Minute(), timeTemp.Second(),
 						timeTemp.Nanosecond(), timeTemp.Location())
 					if !r.until.IsZero() && res.After(r.until) {
