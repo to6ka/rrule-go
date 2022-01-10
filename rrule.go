@@ -560,13 +560,46 @@ type rIterator struct {
 	timeset  []time.Time
 	total    int
 	count    int
-	remain   []time.Time
+	remain   remainSlice
 	finished bool
 }
 
+type remainSlice struct {
+	slice  []time.Time
+	backup []time.Time
+}
+
+func (s remainSlice) Len() int {
+	return len(s.slice)
+}
+
+func (s *remainSlice) Append(t time.Time) {
+	s.slice = append(s.slice, t)
+	s.backup = s.slice
+}
+
+func (s *remainSlice) Pop() time.Time {
+	if len(s.slice) == 0 {
+		return time.Time{}
+	}
+
+	t := s.slice[0]
+
+	s.slice = s.slice[1:]
+	if len(s.slice) == 0 {
+		s.slice = s.backup[:0]
+	}
+
+	return t
+}
+
 func (iterator *rIterator) generate() {
+	if iterator.finished {
+		return
+	}
+
 	r := iterator.ii.rrule
-	for len(iterator.remain) == 0 {
+	for iterator.remain.Len() == 0 {
 		// Get dayset with the right frequency
 		dayset, start, end := iterator.ii.getdayset(r.freq, iterator.year, iterator.month, iterator.day)
 
@@ -629,7 +662,7 @@ func (iterator *rIterator) generate() {
 					return
 				} else if !res.Before(r.dtstart) {
 					iterator.total++
-					iterator.remain = append(iterator.remain, res)
+					iterator.remain.Append(res)
 					if iterator.count != 0 {
 						iterator.count--
 						if iterator.count == 0 {
@@ -656,7 +689,7 @@ func (iterator *rIterator) generate() {
 						return
 					} else if !res.Before(r.dtstart) {
 						iterator.total++
-						iterator.remain = append(iterator.remain, res)
+						iterator.remain.Append(res)
 						if iterator.count != 0 {
 							iterator.count--
 							if iterator.count == 0 {
@@ -806,15 +839,10 @@ func (iterator *rIterator) generate() {
 
 // next returns next occurrence and true if it exists, else zero value and false
 func (iterator *rIterator) next() (time.Time, bool) {
-	if !iterator.finished {
-		iterator.generate()
-	}
-	if len(iterator.remain) == 0 {
-		return time.Time{}, false
-	}
-	value := iterator.remain[0]
-	iterator.remain = iterator.remain[1:]
-	return value, true
+	iterator.generate()
+
+	t := iterator.remain.Pop()
+	return t, !t.IsZero()
 }
 
 // Iterator return an iterator for RRule
