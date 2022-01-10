@@ -486,31 +486,27 @@ func (info *iterInfo) rebuild(year int, month time.Month) {
 	info.lastmonth = month
 }
 
-func (info *iterInfo) getdayset(freq Frequency, year int, month time.Month, day int) ([]*int, int, int) {
+func (info *iterInfo) getdayset(freq Frequency, year int, month time.Month, day int) []int {
 	switch freq {
 	case YEARLY:
-		set := make([]*int, info.yearlen)
+		set := make([]int, 0, info.yearlen)
 		for i := 0; i < info.yearlen; i++ {
-			temp := i
-			set[i] = &temp
+			set = append(set, i)
 		}
-		return set, 0, info.yearlen
+		return set
 	case MONTHLY:
-		set := make([]*int, info.yearlen)
 		start, end := info.mrange[month-1], info.mrange[month]
+		set := make([]int, 0, end-start)
 		for i := start; i < end; i++ {
-			temp := i
-			set[i] = &temp
+			set = append(set, i)
 		}
-		return set, start, end
+		return set
 	case WEEKLY:
 		// We need to handle cross-year weeks here.
-		set := make([]*int, info.yearlen+7)
+		set := make([]int, 0, 7)
 		i := time.Date(year, month, day, 0, 0, 0, 0, time.UTC).YearDay() - 1
-		start := i
 		for j := 0; j < 7; j++ {
-			temp := i
-			set[i] = &temp
+			set = append(set, i)
 			i++
 			// if (not (0 <= i < self.yearlen) or
 			//     self.wdaymask[i] == self.rrule._wkst):
@@ -519,13 +515,12 @@ func (info *iterInfo) getdayset(freq Frequency, year int, month time.Month, day 
 				break
 			}
 		}
-		return set, start, i
+		return set
 	}
+
 	// DAILY, HOURLY, MINUTELY, SECONDLY:
-	set := make([]*int, info.yearlen)
 	i := time.Date(year, month, day, 0, 0, 0, 0, time.UTC).YearDay() - 1
-	set[i] = &i
-	return set, i, i + 1
+	return []int{i}
 }
 
 func (info *iterInfo) gettimeset(freq Frequency, hour, minute, second int) (result []time.Time) {
@@ -604,27 +599,27 @@ func (iterator *rIterator) generate() {
 	r := iterator.ii.rrule
 	for iterator.remain.Len() == 0 {
 		// Get dayset with the right frequency
-		dayset, start, end := iterator.ii.getdayset(r.freq, iterator.year, iterator.month, iterator.day)
+		dayset := iterator.ii.getdayset(r.freq, iterator.year, iterator.month, iterator.day)
 
 		// Do the "hard" work ;-)
 		filtered := false
-		for _, i := range dayset[start:end] {
-			if len(r.bymonth) != 0 && !contains(r.bymonth, iterator.ii.mmask[*i]) ||
-				len(r.byweekno) != 0 && iterator.ii.wnomask[*i] == 0 ||
-				len(r.byweekday) != 0 && !contains(r.byweekday, iterator.ii.wdaymask[*i]) ||
-				len(iterator.ii.nwdaymask) != 0 && iterator.ii.nwdaymask[*i] == 0 ||
-				len(r.byeaster) != 0 && iterator.ii.eastermask[*i] == 0 ||
+		for dsi, i := range dayset {
+			if len(r.bymonth) != 0 && !contains(r.bymonth, iterator.ii.mmask[i]) ||
+				len(r.byweekno) != 0 && iterator.ii.wnomask[i] == 0 ||
+				len(r.byweekday) != 0 && !contains(r.byweekday, iterator.ii.wdaymask[i]) ||
+				len(iterator.ii.nwdaymask) != 0 && iterator.ii.nwdaymask[i] == 0 ||
+				len(r.byeaster) != 0 && iterator.ii.eastermask[i] == 0 ||
 				(len(r.bymonthday) != 0 || len(r.bynmonthday) != 0) &&
-					!contains(r.bymonthday, iterator.ii.mdaymask[*i]) &&
-					!contains(r.bynmonthday, iterator.ii.nmdaymask[*i]) ||
+					!contains(r.bymonthday, iterator.ii.mdaymask[i]) &&
+					!contains(r.bynmonthday, iterator.ii.nmdaymask[i]) ||
 				len(r.byyearday) != 0 &&
-					(*i < iterator.ii.yearlen &&
-						!contains(r.byyearday, *i+1) &&
-						!contains(r.byyearday, -iterator.ii.yearlen+*i) ||
-						*i >= iterator.ii.yearlen &&
-							!contains(r.byyearday, *i+1-iterator.ii.yearlen) &&
-							!contains(r.byyearday, -iterator.ii.nextyearlen+*i-iterator.ii.yearlen)) {
-				dayset[*i] = nil
+					(i < iterator.ii.yearlen &&
+						!contains(r.byyearday, i+1) &&
+						!contains(r.byyearday, -iterator.ii.yearlen+i) ||
+						i >= iterator.ii.yearlen &&
+							!contains(r.byyearday, i+1-iterator.ii.yearlen) &&
+							!contains(r.byyearday, -iterator.ii.nextyearlen+i-iterator.ii.yearlen)) {
+				dayset[dsi] = -1
 				filtered = true
 			}
 		}
@@ -639,9 +634,9 @@ func (iterator *rIterator) generate() {
 					daypos, timepos = divmod(pos-1, len(iterator.timeset))
 				}
 				var temp []int
-				for _, x := range dayset[start:end] {
-					if x != nil {
-						temp = append(temp, *x)
+				for _, x := range dayset {
+					if x > 0 {
+						temp = append(temp, x)
 					}
 				}
 				i, err := pySubscript(temp, daypos)
@@ -677,11 +672,11 @@ func (iterator *rIterator) generate() {
 				}
 			}
 		} else {
-			for _, i := range dayset[start:end] {
-				if i == nil {
+			for _, i := range dayset {
+				if i < 0 {
 					continue
 				}
-				date := iterator.ii.firstyday.AddDate(0, 0, *i)
+				date := iterator.ii.firstyday.AddDate(0, 0, i)
 				for _, timeTemp := range iterator.timeset {
 					res := time.Date(date.Year(), date.Month(), date.Day(),
 						timeTemp.Hour(), timeTemp.Minute(), timeTemp.Second(),
