@@ -5,7 +5,7 @@ Go library for working with recurrence rules for calendar dates.
 [![Build Status](http://img.shields.io/travis/teambition/rrule-go.svg?style=flat-square)](https://travis-ci.org/teambition/rrule-go)
 [![Coverage Status](http://img.shields.io/coveralls/teambition/rrule-go.svg?style=flat-square)](https://coveralls.io/r/teambition/rrule-go)
 [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/teambition/rrule-go/master/LICENSE)
-[![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/teambition/rrule-go)
+[![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/to6ka/rrule-go)
 
 The rrule module offers a complete implementation of the recurrence rules documented in the [iCalendar
 RFC](http://www.ietf.org/rfc/rfc2445.txt). It is a partial port of the rrule module from the excellent [python-dateutil](http://labix.org/python-dateutil/) library.
@@ -21,7 +21,7 @@ import (
   "fmt"
   "time"
 
-  "github.com/teambition/rrule-go"
+  "github.com/to6ka/rrule-go"
 )
 
 func exampleRRule() {
