@@ -66,7 +66,7 @@ func contains(list []int, elem int) bool {
 
 func timeContains(list []time.Time, elem time.Time) bool {
 	for _, t := range list {
-		if t == elem {
+		if t.Equal(elem) {
 			return true
 		}
 	}
