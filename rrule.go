@@ -644,9 +644,10 @@ func (iterator *rIterator) generate() {
 					continue
 				}
 				timeTemp := iterator.timeset[timepos]
-				date := iterator.ii.firstyday.AddDate(0, 0, i)
-				res := time.Date(date.Year(), date.Month(), date.Day(),
-					timeTemp.Hour(), timeTemp.Minute(), timeTemp.Second(),
+				dateYear, dateMonth, dateDay := iterator.ii.firstyday.AddDate(0, 0, i).Date()
+				tempHour, tempMinute, tempSecond := timeTemp.Clock()
+				res := time.Date(dateYear, dateMonth, dateDay,
+					tempHour, tempMinute, tempSecond,
 					timeTemp.Nanosecond(), timeTemp.Location())
 				if !timeContains(poslist, res) {
 					poslist = append(poslist, res)
@@ -678,8 +679,9 @@ func (iterator *rIterator) generate() {
 				}
 				dateYear, dateMonth, dateDay := iterator.ii.firstyday.AddDate(0, 0, i).Date()
 				for _, timeTemp := range iterator.timeset {
+					tempHour, tempMinute, tempSecond := timeTemp.Clock()
 					res := time.Date(dateYear, dateMonth, dateDay,
-						timeTemp.Hour(), timeTemp.Minute(), timeTemp.Second(),
+						tempHour, tempMinute, tempSecond,
 						timeTemp.Nanosecond(), timeTemp.Location())
 					if !r.until.IsZero() && res.After(r.until) {
 						r.len = iterator.total
