@@ -177,3 +177,58 @@ func after(next Next, dt time.Time, inc bool) time.Time {
 		}
 	}
 }
+
+func newIntRange(start, end int) intRange {
+	return intRange{
+		Start: start,
+		End:   end,
+	}
+}
+
+type intRange struct {
+	Start, End int
+	position   int
+	started    bool
+	excluded   []int
+}
+
+func (i *intRange) Next() (int, bool) {
+	if !i.started {
+		i.position = i.Start
+		i.started = true
+	}
+
+	for i.position < i.End {
+		pos := i.position
+		i.position++
+
+		if i.posFiltered(pos) {
+			continue
+		}
+		return pos, true
+	}
+
+	i.started = false
+	return 0, false
+}
+
+func (i *intRange) Filter(pos int) {
+	if len(i.excluded) == 0 {
+		i.excluded = make([]int, 0, 10)
+	}
+
+	i.excluded = append(i.excluded, pos)
+}
+
+func (i intRange) posFiltered(pos int) bool {
+	for _, ex := range i.excluded {
+		if pos == ex {
+			return true
+		}
+	}
+	return false
+}
+
+func (i intRange) Filtered() bool {
+	return len(i.excluded) != 0
+}

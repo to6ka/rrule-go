@@ -486,14 +486,14 @@ func (info *iterInfo) rebuild(year int, month time.Month) {
 	info.lastmonth = month
 }
 
-func (info *iterInfo) getdayset(freq Frequency, year int, month time.Month, day int) daysetIterator {
+func (info *iterInfo) getdayset(freq Frequency, year int, month time.Month, day int) intRange {
 	switch freq {
 	case YEARLY:
-		return newDaysetIterator(0, info.yearlen)
+		return newIntRange(0, info.yearlen)
 
 	case MONTHLY:
 		start, end := info.mrange[month-1], info.mrange[month]
-		return newDaysetIterator(start, end)
+		return newIntRange(start, end)
 
 	case WEEKLY:
 		// We need to handle cross-year weeks here.
@@ -511,64 +511,13 @@ func (info *iterInfo) getdayset(freq Frequency, year int, month time.Month, day 
 			end = i + 1
 		}
 
-		return newDaysetIterator(start, end)
+		return newIntRange(start, end)
 
 	default:
 		// DAILY, HOURLY, MINUTELY, SECONDLY:
 		i := time.Date(year, month, day, 0, 0, 0, 0, time.UTC).YearDay() - 1
-		return newDaysetIterator(i, i+1)
+		return newIntRange(i, i+1)
 	}
-}
-
-func newDaysetIterator(start, end int) daysetIterator {
-	return daysetIterator{
-		Start:    start,
-		End:      end,
-		position: start,
-	}
-}
-
-type daysetIterator struct {
-	Start, End int
-	position   int
-	excluded   map[int]struct{}
-}
-
-func (i *daysetIterator) Reset() {
-	i.position = i.Start
-}
-
-func (i *daysetIterator) Next() (int, bool) {
-	for i.position < i.End {
-		pos := i.position
-		i.position++
-
-		if i.posFiltered(pos) {
-			continue
-		}
-		return pos, true
-	}
-
-	return 0, false
-}
-
-func (i *daysetIterator) Filter(pos int) {
-	if i.excluded == nil {
-		i.excluded = map[int]struct{}{}
-	}
-	i.excluded[pos] = struct{}{}
-}
-
-func (i daysetIterator) posFiltered(pos int) bool {
-	if i.excluded == nil {
-		return false
-	}
-	_, ok := i.excluded[pos]
-	return ok
-}
-
-func (i daysetIterator) Filtered() bool {
-	return i.excluded != nil
 }
 
 func (info *iterInfo) gettimeset(freq Frequency, hour, minute, second int) (result []time.Time) {
@@ -681,7 +630,6 @@ func (iterator *rIterator) generate() {
 					daypos, timepos = divmod(pos-1, len(iterator.timeset))
 				}
 				var temp []int
-				dayset.Reset()
 				for x, ok := dayset.Next(); ok; x, ok = dayset.Next() {
 					temp = append(temp, x)
 				}
@@ -719,7 +667,6 @@ func (iterator *rIterator) generate() {
 				}
 			}
 		} else {
-			dayset.Reset()
 			for i, ok := dayset.Next(); ok; i, ok = dayset.Next() {
 				dateYear, dateMonth, dateDay := iterator.ii.firstyday.AddDate(0, 0, i).Date()
 				for _, timeTemp := range iterator.timeset {
