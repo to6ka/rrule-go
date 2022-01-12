@@ -566,7 +566,7 @@ type rIterator struct {
 	count    int
 	remain   reusingRemainSlice
 	finished bool
-	dayset   []posInt
+	dayset   []optInt
 }
 
 type reusingRemainSlice struct {
@@ -630,7 +630,7 @@ func (iterator *rIterator) generate() {
 						i >= iterator.ii.yearlen &&
 							!contains(r.byyearday, i+1-iterator.ii.yearlen) &&
 							!contains(r.byyearday, -iterator.ii.nextyearlen+i-iterator.ii.yearlen)) {
-				dayset[dayIndex].Disabled = true
+				dayset[dayIndex].Defined = false
 				filtered = true
 			}
 		}
@@ -647,7 +647,7 @@ func (iterator *rIterator) generate() {
 				}
 				var temp []int
 				for _, day := range dayset {
-					if !day.Disabled {
+					if day.Defined {
 						temp = append(temp, day.Int)
 					}
 				}
@@ -686,7 +686,7 @@ func (iterator *rIterator) generate() {
 			}
 		} else {
 			for _, day := range dayset {
-				if day.Disabled {
+				if !day.Defined {
 					continue
 				}
 				i := day.Int
@@ -853,14 +853,15 @@ func (iterator *rIterator) fillDaySet(start, end int) {
 	desiredLen := end - start
 
 	if cap(iterator.dayset) < desiredLen {
-		iterator.dayset = make([]posInt, 0, desiredLen)
+		iterator.dayset = make([]optInt, 0, desiredLen)
 	} else {
 		iterator.dayset = iterator.dayset[:0]
 	}
 
 	for i := start; i < end; i++ {
-		iterator.dayset = append(iterator.dayset, posInt{
-			Int: i,
+		iterator.dayset = append(iterator.dayset, optInt{
+			Int:     i,
+			Defined: true,
 		})
 	}
 }

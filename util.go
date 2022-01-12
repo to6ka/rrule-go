@@ -178,7 +178,7 @@ func after(next Next, dt time.Time, inc bool) time.Time {
 	}
 }
 
-type posInt struct {
-	Int      int
-	Disabled bool
+type optInt struct {
+	Int     int
+	Defined bool
 }
