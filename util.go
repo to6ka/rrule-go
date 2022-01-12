@@ -178,57 +178,98 @@ func after(next Next, dt time.Time, inc bool) time.Time {
 	}
 }
 
+type intRange interface {
+	Next() (int, bool)
+	Filtered() bool
+	Len() int
+}
+
 func newIntRange(start, end int) intRange {
-	return intRange{
+	return &monotonicIntRange{
 		Start: start,
 		End:   end,
 	}
 }
 
-type intRange struct {
+type monotonicIntRange struct {
 	Start, End int
 	position   int
 	started    bool
-	excluded   []int
 }
 
-func (i *intRange) Next() (int, bool) {
-	if !i.started {
-		i.position = i.Start
-		i.started = true
-	}
-
-	for i.position < i.End {
-		pos := i.position
-		i.position++
-
-		if i.posFiltered(pos) {
-			continue
-		}
-		return pos, true
-	}
-
-	i.started = false
-	return 0, false
-}
-
-func (i *intRange) Filter(pos int) {
-	if len(i.excluded) == 0 {
-		i.excluded = make([]int, 0, 10)
-	}
-
-	i.excluded = append(i.excluded, pos)
-}
-
-func (i intRange) posFiltered(pos int) bool {
-	for _, ex := range i.excluded {
-		if pos == ex {
-			return true
-		}
-	}
+func (monotonicIntRange) Filtered() bool {
 	return false
 }
 
-func (i intRange) Filtered() bool {
-	return len(i.excluded) != 0
+func (r monotonicIntRange) Len() int {
+	return r.End - r.Start
+}
+
+func (r *monotonicIntRange) Next() (int, bool) {
+	if !r.started {
+		r.position = r.Start
+		r.started = true
+	}
+
+	for r.position < r.End {
+		pos := r.position
+		r.position++
+
+		return pos, true
+	}
+
+	r.started = false
+	return 0, false
+}
+
+func filterIntRange(original intRange, skip func(int) bool) intRange {
+	skipped := 0
+	for i, ok := original.Next(); ok; i, ok = original.Next() {
+		if skip(i) {
+			skipped++
+		}
+	}
+
+	if skipped == 0 {
+		return original
+	}
+	if skipped == original.Len() {
+		return &filteredIntRange{}
+	}
+
+	ret := filteredIntRange{
+		storage: make([]int, 0, original.Len()-skipped),
+	}
+	for i, ok := original.Next(); ok; i, ok = original.Next() {
+		if !skip(i) {
+			ret.storage = append(ret.storage, i)
+		}
+	}
+
+	return &ret
+}
+
+type filteredIntRange struct {
+	storage  []int
+	position int
+}
+
+func (filteredIntRange) Filtered() bool {
+	return true
+}
+
+func (r filteredIntRange) Len() int {
+	return len(r.storage)
+}
+
+func (r *filteredIntRange) Next() (int, bool) {
+	if r.position > len(r.storage)-1 {
+		r.position = 0
+		return 0, false
+	}
+
+	pos := r.position
+	r.position++
+
+	return r.storage[pos], true
 }

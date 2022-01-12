@@ -599,8 +599,8 @@ func (iterator *rIterator) generate() {
 		dayset := iterator.ii.getdayset(r.freq, iterator.year, iterator.month, iterator.day)
 
 		// Do the "hard" work ;-)
-		for i, ok := dayset.Next(); ok; i, ok = dayset.Next() {
-			if len(r.bymonth) != 0 && !contains(r.bymonth, iterator.ii.mmask[i]) ||
+		dayset = filterIntRange(dayset, func(i int) bool {
+			return len(r.bymonth) != 0 && !contains(r.bymonth, iterator.ii.mmask[i]) ||
 				len(r.byweekno) != 0 && iterator.ii.wnomask[i] == 0 ||
 				len(r.byweekday) != 0 && !contains(r.byweekday, iterator.ii.wdaymask[i]) ||
 				len(iterator.ii.nwdaymask) != 0 && iterator.ii.nwdaymask[i] == 0 ||
@@ -614,10 +614,8 @@ func (iterator *rIterator) generate() {
 						!contains(r.byyearday, -iterator.ii.yearlen+i) ||
 						i >= iterator.ii.yearlen &&
 							!contains(r.byyearday, i+1-iterator.ii.yearlen) &&
-							!contains(r.byyearday, -iterator.ii.nextyearlen+i-iterator.ii.yearlen)) {
-				dayset.Filter(i)
-			}
-		}
+							!contains(r.byyearday, -iterator.ii.nextyearlen+i-iterator.ii.yearlen))
+		})
 
 		// Output results
 		if len(r.bysetpos) != 0 && len(iterator.timeset) != 0 {
